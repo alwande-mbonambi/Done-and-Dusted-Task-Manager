@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect
 from models import db, Todo
 from datetime import datetime
 
@@ -13,22 +13,24 @@ def index():
         due_date_str = request.form.get('due_date')
         due_date_obj = datetime.strptime(due_date_str, '%Y-%m-%d') if due_date_str else None
         
+        # Ensure 'General' is the default if empty
+        cat_input = request.form.get('category')
+        final_cat = cat_input.strip() if cat_input and cat_input.strip() != "" else "General"
+
         new_task = Todo(
             title=request.form.get('title'),
             description=request.form.get('description'),
             priority=request.form.get('priority'),
-            due_date=due_date_obj,
-            completed=False
+            category=final_cat,
+            due_date=due_date_obj
         )
         db.session.add(new_task)
         db.session.commit()
         return redirect('/')
 
-    # Active tasks and history
     active_tasks = Todo.query.filter_by(completed=False).all()
     history = Todo.query.filter_by(completed=True).order_by(Todo.date_created.desc()).all()
     
-    # Calculate Urgency Rule (3 days)
     now = datetime.utcnow()
     for task in active_tasks:
         task.is_urgent = False
@@ -40,6 +42,21 @@ def index():
                 task.is_urgent = True
 
     return render_template('index.html', tasks=active_tasks, history=history, count=len(history))
+
+@app.route('/edit/<int:id>', methods=['POST'])
+def edit_task(id):
+    task = Todo.query.get_or_404(id)
+    task.title = request.form.get('title')
+    task.description = request.form.get('description')
+    task.priority = request.form.get('priority')
+    
+    cat_input = request.form.get('category')
+    task.category = cat_input.strip() if cat_input and cat_input.strip() != "" else "General"
+    
+    due_date_str = request.form.get('due_date')
+    task.due_date = datetime.strptime(due_date_str, '%Y-%m-%d') if due_date_str else None
+    db.session.commit()
+    return redirect('/')
 
 @app.route('/complete/<int:id>')
 def complete(id):

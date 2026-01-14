@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Done and Dusted</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { --bg: #0a0a0a; --card: #161616; --cyan: #00f2ff; --purple: #bc13fe; --high: #ff4d4d; }
         
@@ -11,9 +12,9 @@
         .main-wrapper { display: flex; width: 100vw; transition: transform 0.5s ease; }
         .content-area { flex: 1; padding: 40px; max-width: 900px; margin: auto; transition: 0.5s; }
         
-        /* THE SHIFT LOGIC */
+        /* Layout Shift */
         .layout-shrunk { transform: translateX(-175px); }
-        .fab-shrunk { transform: translateX(-350px); } /* Moves the button left when panel opens */
+        .fab-shrunk { transform: translateX(-350px); }
 
         .header { text-align: center; margin-bottom: 30px; }
         .logo { width: 200px; filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.2)); }
@@ -24,54 +25,74 @@
         .btn-history { background: var(--purple); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; position: relative; }
         .badge { position: absolute; top: -8px; right: -8px; background: var(--cyan); color: black; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg); font-weight: 800; }
 
-        .task-card { background: var(--card); border-radius: 18px; padding: 22px; margin-bottom: 18px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
-        .is-urgent { border: 1px solid var(--high); box-shadow: 0 0 15px rgba(255, 77, 77, 0.15); }
+        /* Task Cards */
+        .task-card { background: var(--card); border-radius: 18px; padding: 22px; margin-bottom: 18px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; position: relative; }
+        .is-urgent { border: 1px solid var(--high) !important; box-shadow: 0 0 15px rgba(255, 77, 77, 0.1); }
         
+        /* FIXED Pill Category Styles */
+        .category-pill { 
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            color: #ffffff; /* Default text white */
+            background: #4a5568; /* Distinct from #161616 card background */
+        }
+        
+        /* Specific Category Colors */
+        .cat-work { background: #ffbc00; color: #000; }     
+        .cat-personal { background: #00ff88; color: #000; } 
+        .cat-urgent { background: var(--high); color: #fff; }  
+        .cat-general { background: #0077ff; color: #fff; }  
+
         .task-info { flex: 1; padding-right: 20px; }
         .urgent-tag { color: var(--high); font-size: 11px; font-weight: 800; margin-bottom: 5px; display: block; }
 
-        .task-actions { display: flex; align-items: center; gap: 20px; }
+        .task-actions { display: flex; align-items: center; gap: 15px; }
         .cb-wrapper { cursor: pointer; width: 28px; height: 28px; position: relative; }
         .cb-wrapper input { opacity: 0; width: 0; height: 0; }
         .checkmark { position: absolute; top: 0; left: 0; height: 28px; width: 28px; background: #222; border-radius: 8px; border: 2px solid var(--cyan); }
         .cb-wrapper input:checked ~ .checkmark { background: var(--cyan); }
-        .cb-wrapper input:checked ~ .checkmark:after { content: "✓"; position: absolute; left: 7px; top: 2px; color: black; font-weight: 900; font-size: 18px; }
-        .btn-del { color: #444; text-decoration: none; font-size: 32px; transition: 0.2s; line-height: 1; }
-        .btn-del:hover { color: var(--high); }
+        
+        .btn-del { color: #444; text-decoration: none; font-size: 32px; transition: 0.2s; line-height: 1; cursor: pointer; background:none; border:none;}
+        .btn-edit { color: #444; font-size: 20px; cursor: pointer; background:none; border:none; transition: 0.2s; }
+        .btn-edit:hover { color: var(--cyan); }
 
+        /* Panels */
         #historyPanel { position: fixed; right: -350px; top: 0; width: 350px; height: 100%; background: #0d0d0d; border-left: 1px solid var(--purple); padding: 30px; transition: 0.5s ease; z-index: 100; box-sizing: border-box; overflow-y: auto; }
         .history-open { right: 0 !important; }
-
         .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
         .modal-content { background: var(--card); padding: 35px; border-radius: 24px; width: 420px; border: 1px solid #333; }
-        
-        /* FIXED PLUS BUTTON WITH TRANSITION */
-        .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1); }
+        .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s ease; }
 
-        .empty-state { border: 2px dashed #222; padding: 80px; text-align: center; border-radius: 25px; cursor: pointer; color: #444; }
+        /* Empty States */
+        .empty-state { border: 2px dashed #222; padding: 60px; text-align: center; border-radius: 25px; cursor: pointer; color: #444; margin-top: 20px; }
         #noMatchMsg { text-align: center; padding: 40px; color: #444; display: none; }
     </style>
 </head>
 <body>
 
-    <button class="fab" id="mainFab" onclick="openModal()">+</button>
+    <button class="fab" id="mainFab" onclick="openAddModal()">+</button>
 
     <div class="main-wrapper" id="mainWrapper">
         <div class="content-area">
             <div class="header">
-                <img src="static/images/logo2.png" class="logo">
+                <img src="{{ url_for('static', filename='images/logo2.png') }}" class="logo">
             </div>
 
             <div class="toolbar">
-                <input type="text" id="liveSearch" class="t-input" placeholder="Live search tasks..." onkeyup="liveLogic()">
-                
+                <input type="text" id="liveSearch" class="t-input" placeholder="Search tasks or categories..." onkeyup="liveLogic()">
                 <select id="liveSort" class="t-input" onchange="liveLogic()">
                     <option value="date">Sort: Newest</option>
                     <option value="priority">Sort: Priority</option>
                     <option value="alphabet">Sort: A-Z</option>
                     <option value="due">Sort: Due Date</option>
+                    <option value="category">Sort: Category</option>
                 </select>
-
                 <button class="btn-history" onclick="toggleHistory()">
                     History
                     {% if count > 0 %}<span class="badge">{{ count }}</span>{% endif %}
@@ -80,8 +101,9 @@
 
             <div id="taskList">
                 <div id="noMatchMsg">No tasks match your search...</div>
+                
                 {% if tasks|length < 1 %}
-                    <div class="empty-state" onclick="openModal()">
+                    <div class="empty-state" onclick="openAddModal()">
                         <h3>No tasks at hand!</h3>
                         <p>Click + to start.</p>
                     </div>
@@ -90,6 +112,7 @@
                 {% for task in tasks %}
                 <div class="task-card {{ 'is-urgent' if task.is_urgent }}" 
                      data-title="{{ task.title.lower() }}" 
+                     data-cat="{{ task.category.lower() if task.category else 'general' }}"
                      data-priority="{{ task.priority }}" 
                      data-date="{{ task.date_created }}"
                      data-due="{{ task.due_date if task.due_date else '9999-12-31' }}">
@@ -98,6 +121,9 @@
                         {% if task.is_urgent %}
                             <span class="urgent-tag">⚠ DUE IN {{ task.days_left }} DAYS</span>
                         {% endif %}
+                        <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}">
+                            {{ task.category if task.category else 'GENERAL' }}
+                        </span>
                         <h3 style="margin: 0 0 5px 0;">{{ task.title }}</h3>
                         <p style="color: #888; margin: 0 0 10px 0;">{{ task.description }}</p>
                         {% if task.due_date %}
@@ -106,8 +132,9 @@
                     </div>
 
                     <div class="task-actions">
+                        <button class="btn-edit" onclick="openEditModal('{{task.id}}', '{{task.title}}', '{{task.description}}', '{{task.priority}}', '{{task.category}}', '{{task.due_date.strftime('%Y-%m-%d') if task.due_date}}')">✎</button>
                         <label class="cb-wrapper">
-                            <input type="checkbox" onchange="setTimeout(() => { window.location.href='/complete/{{task.id}}' }, 350)">
+                            <input type="checkbox" onchange="completeWithConfetti('{{task.id}}')">
                             <span class="checkmark"></span>
                         </label>
                         <a href="/delete/{{task.id}}" class="btn-del">&times;</a>
@@ -123,14 +150,17 @@
             <h2 style="color:var(--purple); margin:0;">History</h2>
             <button onclick="toggleHistory()" style="background:none; border:none; color:white; font-size:30px; cursor:pointer;">&times;</button>
         </div>
-        <p style="color:#555; font-size:13px; margin: 10px 0;">Total Tasks: {{ count }}</p>
-        <a href="/clear_history" style="color:var(--high); font-size:12px; text-decoration:none; font-weight:800;">CLEAR ALL HISTORY</a>
-        
+        <a href="/clear_history" style="color:var(--high); font-size:12px; text-decoration:none; font-weight:800; display:block; margin-top:10px;">CLEAR ALL HISTORY</a>
         <div style="margin-top:30px;">
             {% for task in history %}
-            <div style="opacity:0.4; border-bottom:1px solid #222; padding:15px 0;">
-                <div style="text-decoration: line-through; font-weight: 600;">{{ task.title }}</div>
-                <small>Done on: {{ task.date_created.strftime('%b %d') }}</small>
+            <div style="opacity:0.6; border-bottom:1px solid #222; padding:15px 0;">
+                <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}" style="font-size: 8px; padding: 2px 6px;">{{ task.category }}</span>
+                <div style="text-decoration: line-through; font-weight: 600; color: #eee; margin-top: 2px;">
+                    {{ task.title }}
+                </div>
+                <small style="display:block; color:var(--purple); font-weight: 600; margin-top: 5px;">
+                    Completed on: {{ task.date_created.strftime('%b %d, %H:%M') }}
+                </small>
             </div>
             {% endfor %}
         </div>
@@ -138,40 +168,27 @@
 
     <div id="taskModal" class="modal">
         <div class="modal-content">
-            <h2 style="margin-top: 0; margin-bottom: 25px;">New Task</h2>
-            <form action="/" method="POST">
-                <label style="color:var(--cyan); font-size:12px; font-weight:bold;">TITLE</label>
-                <input type="text" name="title" class="t-input" style="width:100%; margin-bottom:15px;" required>
-                
-                <label style="color:var(--cyan); font-size:12px; font-weight:bold;">DESCRIPTION</label>
-                <textarea name="description" class="t-input" style="width:100%; margin-bottom:15px; height:80px;"></textarea>
-                
-                <div style="display:flex; gap:15px;">
-                    <div style="flex:1">
-                        <label style="color:var(--cyan); font-size:12px; font-weight:bold;">PRIORITY</label>
-                        <select name="priority" class="t-input" style="width:100%">
-                            <option value="Low">Low</option>
-                            <option value="Medium" selected>Medium</option>
-                            <option value="High">High</option>
-                        </select>
-                    </div>
-                    <div style="flex:1">
-                        <label style="color:var(--cyan); font-size:12px; font-weight:bold;">DO BY:</label>
-                        <input type="date" name="due_date" class="t-input" style="width:100%">
-                    </div>
+            <h2 id="modalTitle" style="margin-top: 0;">New Task</h2>
+            <form id="taskForm" action="/" method="POST">
+                <input type="text" name="title" id="fTitle" class="t-input" style="width:100%; margin-bottom:15px;" placeholder="Title" required>
+                <textarea name="description" id="fDesc" class="t-input" style="width:100%; margin-bottom:15px; height:80px;" placeholder="Description"></textarea>
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <select name="priority" id="fPriority" class="t-input" style="flex:1">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                    <input type="text" name="category" id="fCat" class="t-input" style="flex:1" placeholder="Category">
                 </div>
-
-                <button type="submit" style="background:var(--cyan); width:100%; padding:15px; border:none; border-radius:12px; font-weight:800; cursor:pointer; margin-top:20px;">ADD TASK</button>
+                <input type="date" name="due_date" id="fDue" class="t-input" style="width:100%; margin-bottom:20px;">
+                <button type="submit" style="background:var(--cyan); width:100%; padding:15px; border:none; border-radius:12px; font-weight:800; cursor:pointer;">SAVE TASK</button>
             </form>
         </div>
     </div>
 
     <script>
-        // LOAD PREFERENCE ON STARTUP
         window.onload = function() {
-            if (localStorage.getItem('historyOpen') === 'true') {
-                applyHistoryToggle(true);
-            }
+            if (localStorage.getItem('historyOpen') === 'true') { applyHistoryToggle(true); }
         };
 
         function toggleHistory() {
@@ -184,8 +201,7 @@
             const panel = document.getElementById('historyPanel');
             const wrapper = document.getElementById('mainWrapper');
             const fab = document.getElementById('mainFab');
-            
-            if (shouldOpen) {
+            if(shouldOpen) {
                 panel.classList.add('history-open');
                 wrapper.classList.add('layout-shrunk');
                 fab.classList.add('fab-shrunk');
@@ -196,7 +212,29 @@
             }
         }
 
-        function openModal() { document.getElementById('taskModal').style.display='flex'; }
+        function completeWithConfetti(id) {
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#00f2ff', '#bc13fe'] });
+            setTimeout(() => { window.location.href = '/complete/' + id; }, 500);
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').innerText = "New Task";
+            document.getElementById('taskForm').action = "/";
+            document.getElementById('taskForm').reset();
+            document.getElementById('taskModal').style.display = 'flex';
+        }
+
+        function openEditModal(id, title, desc, priority, cat, due) {
+            document.getElementById('modalTitle').innerText = "Edit Task";
+            document.getElementById('taskForm').action = "/edit/" + id;
+            document.getElementById('fTitle').value = title;
+            document.getElementById('fDesc').value = desc;
+            document.getElementById('fPriority').value = priority;
+            document.getElementById('fCat').value = (cat === 'General') ? '' : cat;
+            document.getElementById('fDue').value = due;
+            document.getElementById('taskModal').style.display = 'flex';
+        }
+
         window.onclick = function(e) { if(e.target.className == 'modal') document.getElementById('taskModal').style.display='none'; }
 
         function liveLogic() {
@@ -204,19 +242,22 @@
             const sort = document.getElementById('liveSort').value;
             const container = document.getElementById('taskList');
             const tasks = Array.from(container.getElementsByClassName('task-card'));
-            let visibleCount = 0;
+            let matchFound = false;
 
             tasks.forEach(t => {
-                const text = t.getAttribute('data-title');
-                const isMatch = text.includes(search);
+                const title = t.getAttribute('data-title');
+                const cat = t.getAttribute('data-cat');
+                const isMatch = title.includes(search) || cat.includes(search);
                 t.style.display = isMatch ? "flex" : "none";
-                if(isMatch) visibleCount++;
+                if(isMatch) matchFound = true;
             });
 
-            document.getElementById('noMatchMsg').style.display = (visibleCount === 0 && search !== "") ? "block" : "none";
+            const noMatch = document.getElementById('noMatchMsg');
+            if(noMatch) noMatch.style.display = (matchFound || search === "") ? "none" : "block";
 
             tasks.sort((a, b) => {
                 if(sort === 'alphabet') return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+                if(sort === 'category') return a.getAttribute('data-cat').localeCompare(b.getAttribute('data-cat'));
                 if(sort === 'priority') {
                     const map = {High:1, Medium:2, Low:3};
                     return map[a.getAttribute('data-priority')] - map[b.getAttribute('data-priority')];
