@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Done and Dusted</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --bg: #0a0a0a; --card: #161616; --cyan: #00f2ff; --purple: #bc13fe; --high: #ff4d4d; }
         
@@ -11,63 +12,57 @@
         .main-wrapper { display: flex; width: 100vw; transition: transform 0.5s ease; }
         .content-area { flex: 1; padding: 40px; max-width: 900px; margin: auto; transition: 0.5s; }
         
-        /* Animation & States */
+        /* Layout Animations */
         .layout-shrunk { transform: translateX(-175px); }
         .fab-shrunk { transform: translateX(-350px); }
         .slide-out { transform: translateX(120%); opacity: 0; margin-bottom: -100px; pointer-events: none; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-
-        /* Highlight state for bulk selection */
-        .task-card.selected { border-color: var(--cyan) !important; background: rgba(0, 242, 255, 0.05); }
-
-        .header { text-align: center; margin-bottom: 30px; }
-        .logo { width: 180px; filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.2)); }
-
-        /* Toolbar */
-        .toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-        .t-input { background: #1a1a1a; border: 1px solid #333; color: white; padding: 12px; border-radius: 10px; outline: none; font-family: inherit; font-size: 13px; }
         
-        /* Select All Underlined Link */
-        .select-all-btn { background: none; border: none; color: #555; text-decoration: underline; font-size: 11px; font-weight: 800; cursor: pointer; padding: 5px; transition: 0.2s; letter-spacing: 1px; }
-        .select-all-btn:hover { color: var(--cyan); }
-
-        /* Bulk Action Bar */
-        #bulkBar { 
-            position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); 
-            background: #1a1a1a; border: 1px solid var(--cyan); padding: 12px 25px; 
-            border-radius: 50px; display: flex; gap: 20px; align-items: center; 
-            z-index: 1000; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        }
-        #bulkBar.active { bottom: 40px; }
-        .bulk-check { display: none; } 
-
-        .btn-history { background: var(--purple); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; position: relative; }
-        .badge { position: absolute; top: -8px; right: -8px; background: var(--cyan); color: black; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg); font-weight: 800; }
-
         /* Task Cards */
-        .task-card { background: var(--card); border-radius: 18px; padding: 22px; margin-bottom: 18px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; transition: 0.3s ease; position: relative; }
+        .task-card { background: var(--card); border-radius: 18px; padding: 22px; margin-bottom: 18px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; transition: 0.3s ease; position: relative; cursor: pointer; }
+        .task-card.selected { border: 1px solid var(--cyan); background: rgba(0, 242, 255, 0.05); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
+        
         .category-pill { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: #fff; background: #4a5568; }
         .cat-work { background: #ffbc00; color: #000; }     
         .cat-personal { background: #00ff88; color: #000; } 
         .cat-urgent { background: var(--high); color: #fff; }  
         .cat-general { background: #0077ff; color: #fff; }  
 
+        /* Controls */
         .task-info { flex: 1; padding-right: 20px; }
         .task-actions { display: flex; align-items: center; gap: 15px; }
         .cb-wrapper { cursor: pointer; width: 28px; height: 28px; position: relative; }
         .cb-wrapper input { opacity: 0; width: 0; height: 0; }
         .checkmark { position: absolute; top: 0; left: 0; height: 28px; width: 28px; background: #222; border-radius: 8px; border: 2px solid var(--cyan); transition: 0.2s; }
         .cb-wrapper input:checked ~ .checkmark { background: var(--cyan); }
+        .checkmark:after { content: ""; position: absolute; display: none; left: 9px; top: 5px; width: 5px; height: 10px; border: solid black; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+        .cb-wrapper input:checked ~ .checkmark:after { display: block; }
         
-        .btn-del { color: #444; font-size: 32px; text-decoration: none; background: none; border: none; cursor: pointer; }
-        .btn-edit { color: #444; font-size: 20px; background: none; border: none; cursor: pointer; }
+        .btn-del { color: #444; font-size: 32px; text-decoration: none; background: none; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-del:hover { color: var(--high); }
+        .btn-edit { color: #444; font-size: 20px; background: none; border: none; cursor: pointer; transition: 0.2s; }
+        .btn-edit:hover { color: var(--cyan); }
 
-        /* Sidebar/Modal */
+        /* FABs */
+        .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s ease; }
+        .stats-fab { position: fixed; bottom: 35px; left: 35px; width: 65px; height: 65px; background: #222; border: 2px solid var(--purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; z-index: 150; transition: transform 0.5s ease, background 0.3s; box-shadow: 0 0 20px rgba(188, 19, 254, 0.2); }
+        .stats-fab:hover { background: var(--purple); }
+
+        /* Toolbar */
+        .toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 30px; }
+        .t-input { background: #1a1a1a; border: 1px solid #333; color: white; padding: 12px; border-radius: 10px; outline: none; font-family: inherit; font-size: 13px; }
+        .btn-history { background: var(--purple); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; position: relative; }
+        .badge { position: absolute; top: -8px; right: -8px; background: var(--cyan); color: black; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg); font-weight: 800; }
+
+        /* Side Panel */
         #historyPanel { position: fixed; right: -350px; top: 0; width: 350px; height: 100%; background: #0d0d0d; border-left: 1px solid var(--purple); padding: 30px; transition: 0.5s ease; z-index: 100; box-sizing: border-box; overflow-y: auto; }
         .history-open { right: 0 !important; }
+
+        #bulkBar { position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 1px solid var(--cyan); padding: 12px 25px; border-radius: 50px; display: flex; gap: 20px; align-items: center; z-index: 1000; transition: 0.4s; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+        #bulkBar.active { bottom: 40px; }
+        .bulk-check { display: none; } 
+
         .modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
         .modal-content { background: var(--card); padding: 35px; border-radius: 24px; width: 420px; border: 1px solid #333; }
-        .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s ease; }
     </style>
 </head>
 <body>
@@ -80,73 +75,67 @@
             <button type="button" onclick="deselectAll()" style="background: none; border: none; color: #666; cursor: pointer; font-size: 12px;">Cancel</button>
         </div>
 
+        <button type="button" class="stats-fab" id="statsFab" onclick="toggleAnalytics()">📈</button>
         <button type="button" class="fab" id="mainFab" onclick="openAddModal()">+</button>
 
         <div class="main-wrapper" id="mainWrapper">
             <div class="content-area">
                 <h1 style="text-align: center; color: var(--cyan); letter-spacing: 5px; font-weight: 800; margin-bottom: 10px;">DONE & DUSTED</h1>
-                
-                <div class="header">
-                    <img src="{{ url_for('static', filename='images/Logo3.png') }}" class="logo">
-                </div>
+                <div class="header"><img src="{{ url_for('static', filename='images/logo2.png') }}" class="logo"></div>
 
                 <div class="toolbar">
-                    <input type="text" id="liveSearch" class="t-input" placeholder="Search tasks..." onkeyup="liveLogic()">
-                    
+                    <input type="text" id="liveSearch" class="t-input" placeholder="Search tasks or categories..." onkeyup="liveLogic()">
                     <select id="priorityFilter" class="t-input" onchange="liveLogic()">
                         <option value="all">All Priorities</option>
                         <option value="High">High</option>
                         <option value="Medium">Medium</option>
                         <option value="Low">Low</option>
                     </select>
-
                     <select id="liveSort" class="t-input" onchange="liveLogic()">
-                        <option value="date">Newest</option>
-                        <option value="priority">Priority</option>
-                        <option value="alphabet">A-Z</option>
+                        <option value="date">Newest Created</option>
                         <option value="due">Due Date</option>
+                        <option value="priority">Priority</option>
                         <option value="category">Category</option>
+                        <option value="alphabet">A-Z</option>
                     </select>
-
                     <button type="button" class="btn-history" onclick="toggleHistory()">
                         History {% if count > 0 %}<span class="badge">{{ count }}</span>{% endif %}
                     </button>
                 </div>
 
+                <div id="analyticsSection" style="display: none; background: var(--card); padding: 25px; border-radius: 18px; margin-bottom: 25px; border: 1px solid #222;">
+                    <h3 style="margin-top:0; font-size: 12px; color: var(--cyan); letter-spacing: 2px;">7-DAY PRODUCTIVITY</h3>
+                    <canvas id="productivityChart" height="100"></canvas>
+                </div>
+
                 <div style="margin-bottom: 15px; padding-left: 5px;">
-                    <button type="button" class="select-all-btn" onclick="toggleAll()">SELECT ALL VISIBLE...</button>
+                    <button type="button" style="background:none; border:none; color:#555; text-decoration:underline; font-size:11px; font-weight:800; cursor:pointer;" onclick="toggleAll()">SELECT ALL VISIBLE...</button>
                 </div>
 
                 <div id="taskList">
                     <div id="noMatchMsg" style="text-align:center; color:#444; display:none; padding:40px;">No matches found...</div>
-                    
                     {% for task in tasks %}
                     <div class="task-card {{ 'is-urgent' if task.is_urgent }}" 
                          data-title="{{ task.title.lower() }}" 
                          data-cat="{{ task.category.lower() if task.category else 'general' }}"
                          data-priority="{{ task.priority }}" 
-                         data-date="{{ task.date_created }}"
-                         data-due="{{ task.due_date if task.due_date else '9999-12-31' }}">
+                         data-created="{{ task.date_created.isoformat() }}"
+                         data-due="{{ task.due_date.isoformat() if task.due_date else '9999-12-31' }}"
+                         onclick="selectCard(this, event)">
                         
-                        <input type="checkbox" name="task_ids" value="{{task.id}}" class="bulk-check">
+                        <input type="checkbox" name="task_ids" value="{{task.id}}" class="bulk-check" onclick="event.stopPropagation()">
 
                         <div class="task-info">
-                            {% if task.is_urgent %}
-                                <span style="color:var(--high); font-size:10px; font-weight:800; display:block; margin-bottom:5px;">⚠ DUE IN {{ task.days_left }} DAYS</span>
-                            {% endif %}
-                            <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}">
-                                {{ task.category if task.category else 'GENERAL' }}
-                            </span>
+                            {% if task.is_urgent %}<span style="color:var(--high); font-size:10px; font-weight:800; display:block; margin-bottom:5px;">⚠ DUE IN {{ task.days_left }} DAYS</span>{% endif %}
+                            <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}">{{ task.category if task.category else 'GENERAL' }}</span>
                             <h3 style="margin: 0 0 5px 0;">{{ task.title }}</h3>
                             <p style="color: #888; margin: 0 0 10px 0; font-size: 14px;">{{ task.description }}</p>
+                            {% if task.due_date %}<small style="color: #555;">Due: {{ task.due_date.strftime('%Y-%m-%d') }}</small>{% endif %}
                         </div>
 
-                        <div class="task-actions">
+                        <div class="task-actions" onclick="event.stopPropagation()">
                             <button type="button" class="btn-edit" onclick="openEditModal('{{task.id}}', '{{task.title}}', '{{task.description}}', '{{task.priority}}', '{{task.category}}', '{{task.due_date.strftime('%Y-%m-%d') if task.due_date}}')">✎</button>
-                            <label class="cb-wrapper">
-                                <input type="checkbox" onchange="completeTask('{{task.id}}', this)">
-                                <span class="checkmark"></span>
-                            </label>
+                            <label class="cb-wrapper"><input type="checkbox" onchange="completeTask('{{task.id}}', this)"><span class="checkmark"></span></label>
                             <a href="/delete/{{task.id}}" class="btn-del">&times;</a>
                         </div>
                     </div>
@@ -167,9 +156,7 @@
             <div style="opacity:0.6; border-bottom:1px solid #222; padding:15px 0;">
                 <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}" style="font-size: 8px; padding: 2px 6px;">{{ task.category }}</span>
                 <div style="text-decoration: line-through; font-weight: 600; color: #eee; margin-top: 2px;">{{ task.title }}</div>
-                <small style="display:block; color:var(--purple); font-weight: 600; margin-top: 5px;">
-                    Completed on: {{ task.date_created.strftime('%b %d, %H:%M') }}
-                </small>
+                <small style="display:block; color:var(--purple); font-weight: 600; margin-top: 5px;">Completed on: {{ task.date_created.strftime('%b %d, %H:%M') }}</small>
             </div>
             {% endfor %}
         </div>
@@ -177,16 +164,12 @@
 
     <div id="taskModal" class="modal">
         <div class="modal-content">
-            <h2 id="modalTitle" style="margin-top: 0;">Task</h2>
+            <h2 id="modalTitle">Task</h2>
             <form id="taskForm" action="/" method="POST">
                 <input type="text" name="title" id="fTitle" class="t-input" style="width:100%; margin-bottom:15px;" placeholder="Title" required>
                 <textarea name="description" id="fDesc" class="t-input" style="width:100%; margin-bottom:15px; height:80px;" placeholder="Description"></textarea>
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <select name="priority" id="fPriority" class="t-input" style="flex:1">
-                        <option value="Low">Low</option>
-                        <option value="Medium" selected>Medium</option>
-                        <option value="High">High</option>
-                    </select>
+                    <select name="priority" id="fPriority" class="t-input" style="flex:1"><option value="Low">Low</option><option value="Medium" selected>Medium</option><option value="High">High</option></select>
                     <input type="text" name="category" id="fCat" class="t-input" style="flex:1" placeholder="Category">
                 </div>
                 <input type="date" name="due_date" id="fDue" class="t-input" style="width:100%; margin-bottom:20px;">
@@ -196,88 +179,12 @@
     </div>
 
     <script>
-        window.onload = function() {
-            if (localStorage.getItem('historyOpen') === 'true') { applyHistoryToggle(true); }
-            liveLogic(); 
-        };
-
-        function toggleAll() {
-            const container = document.getElementById('taskList');
-            const tasks = Array.from(container.getElementsByClassName('task-card'));
-            tasks.forEach(card => {
-                if(card.style.display !== 'none') {
-                    card.querySelector('.bulk-check').checked = true;
-                    card.classList.add('selected');
-                }
-            });
-            updateBulkCount();
-        }
-
-        function deselectAll() {
-            document.querySelectorAll('.task-card').forEach(card => {
-                card.classList.remove('selected');
-                const cb = card.querySelector('.bulk-check');
-                if(cb) cb.checked = false;
-            });
-            updateBulkCount();
-        }
-
-        function updateBulkCount() {
-            const checked = document.querySelectorAll('.bulk-check:checked').length;
-            const bar = document.getElementById('bulkBar');
-            const countText = document.getElementById('selectedCount');
-            if(checked > 0) {
-                bar.classList.add('active');
-                countText.innerText = checked + " Selected";
-            } else {
-                bar.classList.remove('active');
-            }
-        }
-
-        function completeTask(id, checkbox) {
-            const card = checkbox.closest('.task-card');
-            card.classList.add('slide-out');
-            setTimeout(() => { window.location.href = '/complete/' + id; }, 600);
-        }
-
-        function toggleHistory() {
-            const isOpen = document.getElementById('historyPanel').classList.contains('history-open');
-            applyHistoryToggle(!isOpen);
-            localStorage.setItem('historyOpen', !isOpen);
-        }
-
-        function applyHistoryToggle(shouldOpen) {
-            const panel = document.getElementById('historyPanel');
-            const wrapper = document.getElementById('mainWrapper');
-            const fab = document.getElementById('mainFab');
-            if(shouldOpen) { panel.classList.add('history-open'); wrapper.classList.add('layout-shrunk'); fab.classList.add('fab-shrunk'); }
-            else { panel.classList.remove('history-open'); wrapper.classList.remove('layout-shrunk'); fab.classList.remove('fab-shrunk'); }
-        }
-
-        function openAddModal() {
-            document.getElementById('modalTitle').innerText = "New Task";
-            document.getElementById('taskForm').action = "/";
-            document.getElementById('taskForm').reset();
-            document.getElementById('taskModal').style.display = 'flex';
-        }
-
-        function openEditModal(id, title, desc, priority, cat, due) {
-            document.getElementById('modalTitle').innerText = "Edit Task";
-            document.getElementById('taskForm').action = "/edit/" + id;
-            document.getElementById('fTitle').value = title;
-            document.getElementById('fDesc').value = desc;
-            document.getElementById('fPriority').value = priority;
-            document.getElementById('fCat').value = (cat === 'General') ? '' : cat;
-            document.getElementById('fDue').value = due;
-            document.getElementById('taskModal').style.display = 'flex';
-        }
-
-        window.onclick = function(e) { if(e.target.className == 'modal') document.getElementById('taskModal').style.display='none'; }
+        let myChart = null;
 
         function liveLogic() {
             const search = document.getElementById('liveSearch').value.toLowerCase();
             const priorityFilter = document.getElementById('priorityFilter').value;
-            const sort = document.getElementById('liveSort').value;
+            const sortVal = document.getElementById('liveSort').value;
             const container = document.getElementById('taskList');
             const tasks = Array.from(container.getElementsByClassName('task-card'));
             let matchFound = false;
@@ -288,26 +195,100 @@
                 const priority = t.getAttribute('data-priority');
                 const matchesSearch = title.includes(search) || cat.includes(search);
                 const matchesPriority = (priorityFilter === "all" || priority === priorityFilter);
-
                 if (matchesSearch && matchesPriority) { t.style.display = "flex"; matchFound = true; }
                 else { t.style.display = "none"; }
             });
 
-            const noMatch = document.getElementById('noMatchMsg');
-            if(noMatch) noMatch.style.display = (matchFound || (search === "" && priorityFilter === "all")) ? "none" : "block";
+            document.getElementById('noMatchMsg').style.display = matchFound ? "none" : "block";
 
             tasks.sort((a, b) => {
-                if(sort === 'alphabet') return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
-                if(sort === 'category') return a.getAttribute('data-cat').localeCompare(b.getAttribute('data-cat'));
-                if(sort === 'priority') {
-                    const map = {High:1, Medium:2, Low:3};
-                    return map[a.getAttribute('data-priority')] - map[b.getAttribute('data-priority')];
-                }
-                if(sort === 'due') return a.getAttribute('data-due').localeCompare(b.getAttribute('data-due'));
-                return b.getAttribute('data-date').localeCompare(a.getAttribute('data-date'));
+                if (sortVal === 'alphabet') return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
+                if (sortVal === 'category') return a.getAttribute('data-cat').localeCompare(b.getAttribute('data-cat'));
+                if (sortVal === 'priority') { const map = { High: 1, Medium: 2, Low: 3 }; return map[a.getAttribute('data-priority')] - map[b.getAttribute('data-priority')]; }
+                if (sortVal === 'due') return a.getAttribute('data-due').localeCompare(b.getAttribute('data-due'));
+                return b.getAttribute('data-created').localeCompare(a.getAttribute('data-created'));
             });
             tasks.forEach(t => container.appendChild(t));
         }
+
+        function selectCard(card, event) {
+            card.classList.toggle('selected');
+            const cb = card.querySelector('.bulk-check');
+            cb.checked = !cb.checked;
+            updateBulkCount();
+        }
+
+        function updateBulkCount() {
+            const checked = document.querySelectorAll('.bulk-check:checked').length;
+            const bar = document.getElementById('bulkBar');
+            if(checked > 0) { bar.classList.add('active'); document.getElementById('selectedCount').innerText = checked + " Selected"; }
+            else { bar.classList.remove('active'); }
+        }
+
+        function toggleAll() {
+            Array.from(document.getElementsByClassName('task-card')).forEach(card => {
+                if(card.style.display !== 'none') { card.classList.add('selected'); card.querySelector('.bulk-check').checked = true; }
+            });
+            updateBulkCount();
+        }
+
+        function deselectAll() {
+            document.querySelectorAll('.task-card').forEach(card => { card.classList.remove('selected'); card.querySelector('.bulk-check').checked = false; });
+            updateBulkCount();
+        }
+
+        function toggleHistory() {
+            const isOpen = document.getElementById('historyPanel').classList.contains('history-open');
+            applyHistoryToggle(!isOpen);
+        }
+
+        function applyHistoryToggle(shouldOpen) {
+            const panel = document.getElementById('historyPanel');
+            const wrapper = document.getElementById('mainWrapper');
+            const mainFab = document.getElementById('mainFab');
+            if(shouldOpen) { panel.classList.add('history-open'); wrapper.classList.add('layout-shrunk'); mainFab.classList.add('fab-shrunk'); }
+            else { panel.classList.remove('history-open'); wrapper.classList.remove('layout-shrunk'); mainFab.classList.remove('fab-shrunk'); }
+        }
+
+        function toggleAnalytics() {
+            const section = document.getElementById('analyticsSection');
+            const isHidden = section.style.display === 'none';
+            section.style.display = isHidden ? 'block' : 'none';
+            if (isHidden && !myChart) { initChart(); }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('productivityChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {{ chart_labels | tojson }},
+                    datasets: [{
+                        label: 'Tasks Dusted',
+                        data: {{ chart_data | tojson }},
+                        borderColor: '#00f2ff',
+                        backgroundColor: 'rgba(0, 242, 255, 0.1)',
+                        borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#00f2ff'
+                    }]
+                },
+                options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#222' }, ticks: { color: '#666', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#666' } } } }
+            });
+        }
+
+        function completeTask(id, checkbox) {
+            const card = checkbox.closest('.task-card');
+            card.classList.add('slide-out');
+            setTimeout(() => { window.location.href = '/complete/' + id; }, 600);
+        }
+
+        function openAddModal() { document.getElementById('modalTitle').innerText = "New Task"; document.getElementById('taskForm').action = "/"; document.getElementById('taskForm').reset(); document.getElementById('taskModal').style.display = 'flex'; }
+        function openEditModal(id, title, desc, priority, cat, due) {
+            document.getElementById('modalTitle').innerText = "Edit Task"; document.getElementById('taskForm').action = "/edit/" + id;
+            document.getElementById('fTitle').value = title; document.getElementById('fDesc').value = desc;
+            document.getElementById('fPriority').value = priority; document.getElementById('fCat').value = cat;
+            document.getElementById('fDue').value = due; document.getElementById('taskModal').style.display = 'flex';
+        }
+        window.onclick = function(e) { if(e.target.className == 'modal') document.getElementById('taskModal').style.display='none'; }
     </script>
 </body>
 </html>
