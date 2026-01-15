@@ -6,7 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #0a0a0a; --card: #161616; --cyan: #00f2ff; --purple: #bc13fe; --high: #ff4d4d; }
+        :root { --bg: #0a0a0a; --card: #161616; --cyan: #00f2ff; --purple: #bc13fe; --high: #ff4d4d; --upcoming: #ffa500; }
         
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: white; margin: 0; overflow-x: hidden; transition: 0.5s; }
         .main-wrapper { display: flex; width: 100vw; transition: transform 0.5s ease; }
@@ -21,13 +21,18 @@
         .task-card { background: var(--card); border-radius: 18px; padding: 22px; margin-bottom: 18px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; transition: 0.3s ease; position: relative; cursor: pointer; }
         .task-card.selected { border: 1px solid var(--cyan); background: rgba(0, 242, 255, 0.05); box-shadow: 0 0 15px rgba(0, 242, 255, 0.1); }
         
-        .category-pill { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: #fff; background: #4a5568; }
-        .cat-work { background: #ffbc00; color: #000; }     
-        .cat-personal { background: #00ff88; color: #000; } 
-        .cat-urgent { background: var(--high); color: #fff; }  
-        .cat-general { background: #0077ff; color: #fff; }  
+        /* Smart Status Styling */
+        .task-card.is-overdue { border: 2px solid var(--high) !important; background: rgba(255, 77, 77, 0.08); box-shadow: 0 0 20px rgba(255, 77, 77, 0.2); }
+        .task-card.is-upcoming { border: 2px solid var(--upcoming) !important; background: rgba(255, 165, 0, 0.05); }
 
-        /* Restore Controls Styling */
+        .status-label { font-size: 10px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 5px; }
+        .overdue-label { color: var(--high); }
+        .upcoming-label { color: var(--upcoming); }
+
+        /* Dynamic Category Pills */
+        .category-pill { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; color: #000; }
+
+        /* Task Controls */
         .task-info { flex: 1; padding-right: 20px; }
         .task-actions { display: flex; align-items: center; gap: 15px; }
         .cb-wrapper { cursor: pointer; width: 28px; height: 28px; position: relative; }
@@ -42,19 +47,11 @@
         .btn-edit { color: #444; font-size: 20px; background: none; border: none; cursor: pointer; transition: 0.2s; }
         .btn-edit:hover { color: var(--cyan); }
 
-        /* Floating Action Hub */
+        /* FAB Hub */
         .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s ease; }
-        
-        /* Stats FAB with Pulse and Icon Style */
         .stats-fab { position: fixed; bottom: 35px; left: 35px; width: 65px; height: 65px; background: #111; border: 2px solid var(--purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 150; transition: transform 0.5s ease, background 0.3s; animation: pulse-purple 2s infinite; }
-        .stats-fab:hover { background: var(--purple); transform: scale(1.05); }
-        .stats-fab img { width: 30px; height: 30px; filter: invert(1); transition: 0.3s; }
-        
-        @keyframes pulse-purple {
-            0% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0.6); }
-            70% { box-shadow: 0 0 0 15px rgba(188, 19, 254, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0); }
-        }
+        .stats-fab img { width: 30px; height: 30px; filter: invert(1); }
+        @keyframes pulse-purple { 0% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(188, 19, 254, 0); } 100% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0); } }
 
         /* Toolbar */
         .toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 30px; }
@@ -74,7 +71,7 @@
         .modal-content { background: var(--card); padding: 35px; border-radius: 24px; width: 420px; border: 1px solid #333; }
     </style>
 </head>
-<body>
+<body onload="liveLogic()">
 
     <form id="bulkForm" action="/bulk_action" method="POST">
         <div id="bulkBar">
@@ -85,14 +82,14 @@
         </div>
 
         <button type="button" class="stats-fab" id="statsFab" onclick="toggleAnalytics()" title="View Analytics">
-            <img src="https://images.icon-icons.com/635/PNG/512/stats_icon-icons.com_58833.png" alt="Stats Icon">
+            <img src="https://images.icon-icons.com/635/PNG/512/stats_icon-icons.com_58833.png" alt="Stats">
         </button>
         <button type="button" class="fab" id="mainFab" onclick="openAddModal()">+</button>
 
         <div class="main-wrapper" id="mainWrapper">
             <div class="content-area">
                 <h1 style="text-align: center; color: var(--cyan); letter-spacing: 5px; font-weight: 800; margin-bottom: 10px;">DONE & DUSTED</h1>
-                <div class="header"><img src="{{ url_for('static', filename='images/logo2.png') }}" class="logo"></div>
+                <div class="header"><img src="{{ url_for('static', filename='images/logo2.png') }}" class="logo" style="display: block; margin: 0 auto 20px auto; max-width: 150px;"></div>
 
                 <div class="toolbar">
                     <input type="text" id="liveSearch" class="t-input" placeholder="Search tasks or categories..." onkeyup="liveLogic()">
@@ -126,7 +123,7 @@
                 <div id="taskList">
                     <div id="noMatchMsg" style="text-align:center; color:#444; display:none; padding:40px;">No matches found...</div>
                     {% for task in tasks %}
-                    <div class="task-card {{ 'is-urgent' if task.is_urgent }}" 
+                    <div class="task-card" 
                          data-title="{{ task.title.lower() }}" 
                          data-cat="{{ task.category.lower() if task.category else 'general' }}"
                          data-priority="{{ task.priority }}" 
@@ -137,8 +134,7 @@
                         <input type="checkbox" name="task_ids" value="{{task.id}}" class="bulk-check" onclick="event.stopPropagation()">
 
                         <div class="task-info">
-                            {% if task.is_urgent %}<span style="color:var(--high); font-size:10px; font-weight:800; display:block; margin-bottom:5px;">⚠ DUE IN {{ task.days_left }} DAYS</span>{% endif %}
-                            <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}">{{ task.category if task.category else 'GENERAL' }}</span>
+                            <span class="category-pill">{{ task.category if task.category else 'GENERAL' }}</span>
                             <h3 style="margin: 0 0 5px 0;">{{ task.title }}</h3>
                             <p style="color: #888; margin: 0 0 10px 0; font-size: 14px;">{{ task.description }}</p>
                             {% if task.due_date %}<small style="color: #555;">Due: {{ task.due_date.strftime('%Y-%m-%d') }}</small>{% endif %}
@@ -146,7 +142,10 @@
 
                         <div class="task-actions" onclick="event.stopPropagation()">
                             <button type="button" class="btn-edit" onclick="openEditModal('{{task.id}}', '{{task.title}}', '{{task.description}}', '{{task.priority}}', '{{task.category}}', '{{task.due_date.strftime('%Y-%m-%d') if task.due_date}}')">✎</button>
-                            <label class="cb-wrapper"><input type="checkbox" onchange="completeTask('{{task.id}}', this)"><span class="checkmark"></span></label>
+                            <label class="cb-wrapper">
+                                <input type="checkbox" onchange="completeTask('{{task.id}}', this)">
+                                <span class="checkmark"></span>
+                            </label>
                             <a href="/delete/{{task.id}}" class="btn-del">&times;</a>
                         </div>
                     </div>
@@ -165,7 +164,7 @@
         <div style="margin-top:30px;">
             {% for task in history %}
             <div style="opacity:0.6; border-bottom:1px solid #222; padding:15px 0;">
-                <span class="category-pill cat-{{ task.category.lower() if task.category else 'general' }}" style="font-size: 8px; padding: 2px 6px;">{{ task.category }}</span>
+                <span class="category-pill" style="font-size: 8px; padding: 2px 6px;">{{ task.category }}</span>
                 <div style="text-decoration: line-through; font-weight: 600; color: #eee; margin-top: 2px;">{{ task.title }}</div>
                 <small style="display:block; color:var(--purple); font-weight: 600; margin-top: 5px;">Completed on: {{ task.date_created.strftime('%b %d, %H:%M') }}</small>
             </div>
@@ -191,6 +190,8 @@
 
     <script>
         let myChart = null;
+        const categoryColorMap = {};
+        const palette = ['#00ff88', '#ffbc00', '#0077ff', '#bc13fe', '#ff4d4d', '#ff00ff', '#00ffff', '#ffffff', '#7cfc00', '#da70d6'];
 
         function liveLogic() {
             const search = document.getElementById('liveSearch').value.toLowerCase();
@@ -198,28 +199,63 @@
             const sortVal = document.getElementById('liveSort').value;
             const container = document.getElementById('taskList');
             const tasks = Array.from(container.getElementsByClassName('task-card'));
-            let matchFound = false;
+            const now = new Date();
+            now.setHours(0,0,0,0);
 
             tasks.forEach(t => {
                 const title = t.getAttribute('data-title');
                 const cat = t.getAttribute('data-cat');
                 const priority = t.getAttribute('data-priority');
+                const dueStr = t.getAttribute('data-due');
+                const dueDate = new Date(dueStr);
+                const pill = t.querySelector('.category-pill');
+
+                // 1. UNIQUE CATEGORY COLORS
+                if (!categoryColorMap[cat]) {
+                    categoryColorMap[cat] = palette[Object.keys(categoryColorMap).length % palette.length];
+                }
+                pill.style.background = categoryColorMap[cat];
+
+                // 2. SMART DEADLINE LOGIC (Notification & Overdue)
+                const diffTime = dueDate - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                t.classList.remove('is-overdue', 'is-upcoming');
+                const existingLabel = t.querySelector('.status-label');
+                if (existingLabel) existingLabel.remove();
+
+                if (dueStr !== '9999-12-31') {
+                    if (diffDays < 0) {
+                        t.classList.add('is-overdue');
+                        t.querySelector('.task-info').insertAdjacentHTML('afterbegin', '<span class="status-label overdue-label">⚠️ OVERDUE</span>');
+                    } else if (diffDays <= 3) {
+                        t.classList.add('is-upcoming');
+                        const labelText = diffDays === 0 ? "DUE TODAY" : `DUE IN ${diffDays} DAYS`;
+                        t.querySelector('.task-info').insertAdjacentHTML('afterbegin', `<span class="status-label upcoming-label">📅 ${labelText}</span>`);
+                    }
+                }
+
+                // 3. FILTERING
                 const matchesSearch = title.includes(search) || cat.includes(search);
                 const matchesPriority = (priorityFilter === "all" || priority === priorityFilter);
-                if (matchesSearch && matchesPriority) { t.style.display = "flex"; matchFound = true; }
-                else { t.style.display = "none"; }
+                t.style.display = (matchesSearch && matchesPriority) ? "flex" : "none";
             });
 
-            document.getElementById('noMatchMsg').style.display = matchFound ? "none" : "block";
-
+            // 4. SMART SORTING
             tasks.sort((a, b) => {
+                const aState = a.classList.contains('is-overdue') ? 2 : (a.classList.contains('is-upcoming') ? 1 : 0);
+                const bState = b.classList.contains('is-overdue') ? 2 : (b.classList.contains('is-upcoming') ? 1 : 0);
+                
+                if (aState !== bState) return bState - aState; // Overdue > Upcoming > Normal
+
                 if (sortVal === 'alphabet') return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
                 if (sortVal === 'category') return a.getAttribute('data-cat').localeCompare(b.getAttribute('data-cat'));
-                if (sortVal === 'priority') { const map = { High: 1, Medium: 2, Low: 3 }; return map[a.getAttribute('data-priority')] - map[b.getAttribute('data-priority')]; }
+                if (sortVal === 'priority') { const m = {High:1, Medium:2, Low:3}; return m[a.getAttribute('data-priority')] - m[b.getAttribute('data-priority')]; }
                 if (sortVal === 'due') return a.getAttribute('data-due').localeCompare(b.getAttribute('data-due'));
                 return b.getAttribute('data-created').localeCompare(a.getAttribute('data-created'));
             });
             tasks.forEach(t => container.appendChild(t));
+            document.getElementById('noMatchMsg').style.display = tasks.some(t => t.style.display === 'flex') ? 'none' : 'block';
         }
 
         function selectCard(card, event) {
@@ -229,47 +265,55 @@
             updateBulkCount();
         }
 
-        function updateBulkCount() {
-            const checked = document.querySelectorAll('.bulk-check:checked').length;
-            const bar = document.getElementById('bulkBar');
-            if(checked > 0) { bar.classList.add('active'); document.getElementById('selectedCount').innerText = checked + " Selected"; }
-            else { bar.classList.remove('active'); }
-        }
-
         function toggleAll() {
-            Array.from(document.getElementsByClassName('task-card')).forEach(card => {
-                if(card.style.display !== 'none') { card.classList.add('selected'); card.querySelector('.bulk-check').checked = true; }
+            Array.from(document.getElementsByClassName('task-card')).forEach(c => {
+                if(c.style.display !== 'none') { c.classList.add('selected'); c.querySelector('.bulk-check').checked = true; }
             });
             updateBulkCount();
         }
 
+        function updateBulkCount() {
+            const c = document.querySelectorAll('.bulk-check:checked').length;
+            document.getElementById('bulkBar').classList.toggle('active', c > 0);
+            document.getElementById('selectedCount').innerText = c + " Selected";
+        }
+
         function deselectAll() {
-            document.querySelectorAll('.task-card').forEach(card => { card.classList.remove('selected'); card.querySelector('.bulk-check').checked = false; });
+            document.querySelectorAll('.task-card').forEach(c => { c.classList.remove('selected'); c.querySelector('.bulk-check').checked = false; });
             updateBulkCount();
         }
 
         function toggleHistory() {
-            const isOpen = document.getElementById('historyPanel').classList.contains('history-open');
-            applyHistoryToggle(!isOpen);
-        }
-
-        function applyHistoryToggle(shouldOpen) {
-            const panel = document.getElementById('historyPanel');
-            const wrapper = document.getElementById('mainWrapper');
-            const mainFab = document.getElementById('mainFab');
-            if(shouldOpen) { panel.classList.add('history-open'); wrapper.classList.add('layout-shrunk'); mainFab.classList.add('fab-shrunk'); }
-            else { panel.classList.remove('history-open'); wrapper.classList.remove('layout-shrunk'); mainFab.classList.remove('fab-shrunk'); }
+            const p = document.getElementById('historyPanel');
+            const w = document.getElementById('mainWrapper');
+            const m = document.getElementById('mainFab');
+            const isOpen = p.classList.toggle('history-open');
+            w.classList.toggle('layout-shrunk', isOpen);
+            m.classList.toggle('fab-shrunk', isOpen);
         }
 
         function toggleAnalytics() {
-            const section = document.getElementById('analyticsSection');
-            const fab = document.getElementById('statsFab');
-            const isHidden = section.style.display === 'none';
-            section.style.display = isHidden ? 'block' : 'none';
-            // Stop pulsing once they've checked it out
-            fab.style.animation = 'none';
-            if (isHidden && !myChart) { initChart(); }
+            const s = document.getElementById('analyticsSection');
+            document.getElementById('statsFab').style.animation = 'none';
+            s.style.display = s.style.display === 'none' ? 'block' : 'none';
+            if(s.style.display === 'block' && !myChart) initChart();
         }
+
+        function completeTask(id, cb) {
+            cb.closest('.task-card').classList.add('slide-out');
+            setTimeout(() => { window.location.href = '/complete/' + id; }, 600);
+        }
+
+        function openAddModal() { document.getElementById('modalTitle').innerText = "New Task"; document.getElementById('taskForm').action = "/"; document.getElementById('taskForm').reset(); document.getElementById('taskModal').style.display = 'flex'; }
+        
+        function openEditModal(id, t, d, p, c, due) {
+            document.getElementById('modalTitle').innerText = "Edit Task"; document.getElementById('taskForm').action = "/edit/" + id;
+            document.getElementById('fTitle').value = t; document.getElementById('fDesc').value = d;
+            document.getElementById('fPriority').value = p; document.getElementById('fCat').value = c;
+            document.getElementById('fDue').value = due; document.getElementById('taskModal').style.display = 'flex';
+        }
+
+        window.onclick = function(e) { if(e.target.className == 'modal') document.getElementById('taskModal').style.display='none'; }
 
         function initChart() {
             const ctx = document.getElementById('productivityChart').getContext('2d');
@@ -285,24 +329,15 @@
                         borderWidth: 3, tension: 0.4, fill: true, pointBackgroundColor: '#00f2ff'
                     }]
                 },
-                options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#222' }, ticks: { color: '#666', stepSize: 1 } }, x: { grid: { display: false }, ticks: { color: '#666' } } } }
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#222' }, ticks: { color: '#666', stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: '#666' } }
+                    }
+                }
             });
         }
-
-        function completeTask(id, checkbox) {
-            const card = checkbox.closest('.task-card');
-            card.classList.add('slide-out');
-            setTimeout(() => { window.location.href = '/complete/' + id; }, 600);
-        }
-
-        function openAddModal() { document.getElementById('modalTitle').innerText = "New Task"; document.getElementById('taskForm').action = "/"; document.getElementById('taskForm').reset(); document.getElementById('taskModal').style.display = 'flex'; }
-        function openEditModal(id, title, desc, priority, cat, due) {
-            document.getElementById('modalTitle').innerText = "Edit Task"; document.getElementById('taskForm').action = "/edit/" + id;
-            document.getElementById('fTitle').value = title; document.getElementById('fDesc').value = desc;
-            document.getElementById('fPriority').value = priority; document.getElementById('fCat').value = cat;
-            document.getElementById('fDue').value = due; document.getElementById('taskModal').style.display = 'flex';
-        }
-        window.onclick = function(e) { if(e.target.className == 'modal') document.getElementById('taskModal').style.display='none'; }
     </script>
 </body>
 </html>
