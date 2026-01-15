@@ -13,7 +13,6 @@ def index():
         due_date_str = request.form.get('due_date')
         due_date_obj = datetime.strptime(due_date_str, '%Y-%m-%d') if due_date_str else None
         
-        # Ensure 'General' is the default if empty
         cat_input = request.form.get('category')
         final_cat = cat_input.strip() if cat_input and cat_input.strip() != "" else "General"
 
@@ -43,6 +42,22 @@ def index():
 
     return render_template('index.html', tasks=active_tasks, history=history, count=len(history))
 
+@app.route('/bulk_action', methods=['POST'])
+def bulk_action():
+    ids = request.form.getlist('task_ids')
+    action = request.form.get('action')
+    
+    if ids:
+        tasks = Todo.query.filter(Todo.id.in_(ids)).all()
+        for task in tasks:
+            if action == 'complete':
+                task.completed = True
+                task.date_created = datetime.utcnow()
+            elif action == 'delete':
+                db.session.delete(task)
+        db.session.commit()
+    return redirect('/')
+
 @app.route('/edit/<int:id>', methods=['POST'])
 def edit_task(id):
     task = Todo.query.get_or_404(id)
@@ -62,6 +77,7 @@ def edit_task(id):
 def complete(id):
     task = Todo.query.get_or_404(id)
     task.completed = True
+    task.date_created = datetime.utcnow()
     db.session.commit()
     return redirect('/')
 
