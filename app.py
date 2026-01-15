@@ -1,13 +1,25 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from models import db, Todo
 from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///tasks.db')
+
+# --- DATABASE CONFIGURATION ---
+# This looks for the 'DATABASE_URL' you set on Render.
+uri = os.environ.get('DATABASE_URL', 'sqlite:///tasks.db')
+
+# FIX: Render's "postgres://" prefix must be changed to "postgresql://" for SQLAlchemy
+if uri and uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-placeholder')
+
 db.init_app(app)
 
+# --- ROUTES ---
 @app.route('/', methods=['POST', 'GET'])
 def index():
     if request.method == 'POST':
@@ -30,7 +42,6 @@ def index():
     active_tasks = Todo.query.filter_by(completed=False).all()
     history = Todo.query.filter_by(completed=True).order_by(Todo.date_created.desc()).all()
     
-    # Logic for Urgency Badges (remains same)
     now = datetime.utcnow()
     for task in active_tasks:
         task.is_urgent = False
@@ -40,7 +51,7 @@ def index():
             if 0 <= task.days_left <= 3:
                 task.is_urgent = True
 
-    # NEW: Analytics Data
+    # Analytics Data
     daily_stats = []
     labels = []
     for i in range(6, -1, -1):
@@ -59,7 +70,6 @@ def index():
                            chart_labels=labels,
                            chart_data=daily_stats)
 
-# ... All other routes (bulk_action, edit, complete, delete, clear_history) remain 100% UNCHANGED ...
 @app.route('/bulk_action', methods=['POST'])
 def bulk_action():
     ids = request.form.getlist('task_ids')
@@ -108,9 +118,12 @@ def clear_history():
     db.session.commit()
     return redirect('/')
 
-
+# --- INITIALIZATION ---
+# This block automatically creates the database tables on Render's Postgres
 with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Render requires the app to listen on a port provided by the environment
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
