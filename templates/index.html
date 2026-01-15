@@ -35,11 +35,13 @@
         /* Task Controls */
         .task-info { flex: 1; padding-right: 20px; }
         .task-actions { display: flex; align-items: center; gap: 15px; }
-        .cb-wrapper { cursor: pointer; width: 28px; height: 28px; position: relative; }
-        .cb-wrapper input { opacity: 0; width: 0; height: 0; }
+        
+        /* Styled Checkbox Controls */
+        .cb-wrapper { cursor: pointer; width: 28px; height: 28px; position: relative; display: inline-block; }
+        .cb-wrapper input { opacity: 0; width: 0; height: 0; position: absolute; }
         .checkmark { position: absolute; top: 0; left: 0; height: 28px; width: 28px; background: #222; border-radius: 8px; border: 2px solid var(--cyan); transition: 0.2s; }
         .cb-wrapper input:checked ~ .checkmark { background: var(--cyan); }
-        .checkmark:after { content: ""; position: absolute; display: none; left: 9px; top: 5px; width: 5px; height: 10px; border: solid black; border-width: 0 3px 3px 0; transform: rotate(45deg); }
+        .checkmark:after { content: ""; position: absolute; display: none; left: 9px; top: 5px; width: 6px; height: 12px; border: solid black; border-width: 0 3px 3px 0; transform: rotate(45deg); }
         .cb-wrapper input:checked ~ .checkmark:after { display: block; }
         
         .btn-del { color: #444; font-size: 32px; text-decoration: none; background: none; border: none; cursor: pointer; transition: 0.2s; }
@@ -51,7 +53,6 @@
         .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s ease; }
         .stats-fab { position: fixed; bottom: 35px; left: 35px; width: 65px; height: 65px; background: #111; border: 2px solid var(--purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 150; transition: transform 0.5s ease, background 0.3s; animation: pulse-purple 2s infinite; }
         .stats-fab img { width: 30px; height: 30px; filter: invert(1); }
-        @keyframes pulse-purple { 0% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0.6); } 70% { box-shadow: 0 0 0 15px rgba(188, 19, 254, 0); } 100% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0); } }
 
         /* Toolbar */
         .toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 30px; }
@@ -88,8 +89,9 @@
 
         <div class="main-wrapper" id="mainWrapper">
             <div class="content-area">
-                <h1 style="text-align: center; color: var(--cyan); letter-spacing: 5px; font-weight: 800; margin-bottom: 10px;">DONE & DUSTED</h1>
-                <div class="header"><img src="{{ url_for('static', filename='images/logo2.png') }}" class="logo" style="display: block; margin: 0 auto 20px auto; max-width: 150px;"></div>
+                
+                <div class="header"><img src="{{ url_for('static', filename='images/Logo3.png') }}" class="logo" style="display: block; margin: 0 auto 20px auto; max-width: 80px;"></div>
+                <h1 style="text-align: center; color: var(--cyan); letter-spacing: 5px; font-weight: 800; margin-bottom: 10px; ">DONE & DUSTED</h1>
 
                 <div class="toolbar">
                     <input type="text" id="liveSearch" class="t-input" placeholder="Search tasks or categories..." onkeyup="liveLogic()">
@@ -107,7 +109,7 @@
                         <option value="alphabet">A-Z</option>
                     </select>
                     <button type="button" class="btn-history" onclick="toggleHistory()">
-                        History {% if count > 0 %}<span class="badge">{{ count }}</span>{% endif %}
+                        Dusted History {% if count > 0 %}<span class="badge">{{ count }}</span>{% endif %}
                     </button>
                 </div>
 
@@ -157,7 +159,7 @@
 
     <div id="historyPanel">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 style="color:var(--purple); margin:0;">History</h2>
+            <h2 style="color:var(--purple); margin:0;">Dusted History</h2>
             <button onclick="toggleHistory()" style="background:none; border:none; color:white; font-size:30px; cursor:pointer;">&times;</button>
         </div>
         <a href="/clear_history" style="color:var(--high); font-size:12px; text-decoration:none; font-weight:800; display:block; margin-top:10px;">CLEAR ALL</a>
@@ -199,8 +201,10 @@
             const sortVal = document.getElementById('liveSort').value;
             const container = document.getElementById('taskList');
             const tasks = Array.from(container.getElementsByClassName('task-card'));
+            
+            // Set "now" to midnight of the current day to trigger "Overdue" when the date is hit
             const now = new Date();
-            now.setHours(0,0,0,0);
+            const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
             tasks.forEach(t => {
                 const title = t.getAttribute('data-title');
@@ -210,43 +214,40 @@
                 const dueDate = new Date(dueStr);
                 const pill = t.querySelector('.category-pill');
 
-                // 1. UNIQUE CATEGORY COLORS
                 if (!categoryColorMap[cat]) {
                     categoryColorMap[cat] = palette[Object.keys(categoryColorMap).length % palette.length];
                 }
                 pill.style.background = categoryColorMap[cat];
 
-                // 2. SMART DEADLINE LOGIC (Notification & Overdue)
-                const diffTime = dueDate - now;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                // Midnight Logic: If current date >= due date, it's overdue
+                const diffTime = dueDate - todayMidnight;
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 
                 t.classList.remove('is-overdue', 'is-upcoming');
                 const existingLabel = t.querySelector('.status-label');
                 if (existingLabel) existingLabel.remove();
 
                 if (dueStr !== '9999-12-31') {
-                    if (diffDays < 0) {
+                    if (diffTime <= 0) {
                         t.classList.add('is-overdue');
                         t.querySelector('.task-info').insertAdjacentHTML('afterbegin', '<span class="status-label overdue-label">⚠️ OVERDUE</span>');
-                    } else if (diffDays <= 3) {
+                    } else if (diffDays < 3) {
                         t.classList.add('is-upcoming');
-                        const labelText = diffDays === 0 ? "DUE TODAY" : `DUE IN ${diffDays} DAYS`;
+                        const labelText = diffDays === 0 ? "DUE SOON" : `DUE IN ${diffDays} DAYS`;
                         t.querySelector('.task-info').insertAdjacentHTML('afterbegin', `<span class="status-label upcoming-label">📅 ${labelText}</span>`);
                     }
                 }
 
-                // 3. FILTERING
                 const matchesSearch = title.includes(search) || cat.includes(search);
                 const matchesPriority = (priorityFilter === "all" || priority === priorityFilter);
                 t.style.display = (matchesSearch && matchesPriority) ? "flex" : "none";
             });
 
-            // 4. SMART SORTING
             tasks.sort((a, b) => {
                 const aState = a.classList.contains('is-overdue') ? 2 : (a.classList.contains('is-upcoming') ? 1 : 0);
                 const bState = b.classList.contains('is-overdue') ? 2 : (b.classList.contains('is-upcoming') ? 1 : 0);
                 
-                if (aState !== bState) return bState - aState; // Overdue > Upcoming > Normal
+                if (aState !== bState) return bState - aState;
 
                 if (sortVal === 'alphabet') return a.getAttribute('data-title').localeCompare(b.getAttribute('data-title'));
                 if (sortVal === 'category') return a.getAttribute('data-cat').localeCompare(b.getAttribute('data-cat'));
