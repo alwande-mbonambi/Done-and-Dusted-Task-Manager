@@ -27,7 +27,7 @@
         .cat-urgent { background: var(--high); color: #fff; }  
         .cat-general { background: #0077ff; color: #fff; }  
 
-        /* Controls */
+        /* Restore Controls Styling */
         .task-info { flex: 1; padding-right: 20px; }
         .task-actions { display: flex; align-items: center; gap: 15px; }
         .cb-wrapper { cursor: pointer; width: 28px; height: 28px; position: relative; }
@@ -42,10 +42,19 @@
         .btn-edit { color: #444; font-size: 20px; background: none; border: none; cursor: pointer; transition: 0.2s; }
         .btn-edit:hover { color: var(--cyan); }
 
-        /* FABs */
+        /* Floating Action Hub */
         .fab { position: fixed; bottom: 35px; right: 35px; width: 65px; height: 65px; background: var(--cyan); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; color: black; cursor: pointer; border: none; z-index: 150; box-shadow: 0 0 20px rgba(0, 242, 255, 0.3); transition: transform 0.5s ease; }
-        .stats-fab { position: fixed; bottom: 35px; left: 35px; width: 65px; height: 65px; background: #222; border: 2px solid var(--purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; z-index: 150; transition: transform 0.5s ease, background 0.3s; box-shadow: 0 0 20px rgba(188, 19, 254, 0.2); }
-        .stats-fab:hover { background: var(--purple); }
+        
+        /* Stats FAB with Pulse and Icon Style */
+        .stats-fab { position: fixed; bottom: 35px; left: 35px; width: 65px; height: 65px; background: #111; border: 2px solid var(--purple); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 150; transition: transform 0.5s ease, background 0.3s; animation: pulse-purple 2s infinite; }
+        .stats-fab:hover { background: var(--purple); transform: scale(1.05); }
+        .stats-fab img { width: 30px; height: 30px; filter: invert(1); transition: 0.3s; }
+        
+        @keyframes pulse-purple {
+            0% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0.6); }
+            70% { box-shadow: 0 0 0 15px rgba(188, 19, 254, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(188, 19, 254, 0); }
+        }
 
         /* Toolbar */
         .toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 30px; }
@@ -53,7 +62,7 @@
         .btn-history { background: var(--purple); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; position: relative; }
         .badge { position: absolute; top: -8px; right: -8px; background: var(--cyan); color: black; border-radius: 50%; width: 22px; height: 22px; font-size: 11px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--bg); font-weight: 800; }
 
-        /* Side Panel */
+        /* History Side Panel */
         #historyPanel { position: fixed; right: -350px; top: 0; width: 350px; height: 100%; background: #0d0d0d; border-left: 1px solid var(--purple); padding: 30px; transition: 0.5s ease; z-index: 100; box-sizing: border-box; overflow-y: auto; }
         .history-open { right: 0 !important; }
 
@@ -75,7 +84,9 @@
             <button type="button" onclick="deselectAll()" style="background: none; border: none; color: #666; cursor: pointer; font-size: 12px;">Cancel</button>
         </div>
 
-        <button type="button" class="stats-fab" id="statsFab" onclick="toggleAnalytics()">📈</button>
+        <button type="button" class="stats-fab" id="statsFab" onclick="toggleAnalytics()" title="View Analytics">
+            <img src="https://images.icon-icons.com/635/PNG/512/stats_icon-icons.com_58833.png" alt="Stats Icon">
+        </button>
         <button type="button" class="fab" id="mainFab" onclick="openAddModal()">+</button>
 
         <div class="main-wrapper" id="mainWrapper">
@@ -252,8 +263,11 @@
 
         function toggleAnalytics() {
             const section = document.getElementById('analyticsSection');
+            const fab = document.getElementById('statsFab');
             const isHidden = section.style.display === 'none';
             section.style.display = isHidden ? 'block' : 'none';
+            // Stop pulsing once they've checked it out
+            fab.style.animation = 'none';
             if (isHidden && !myChart) { initChart(); }
         }
 
