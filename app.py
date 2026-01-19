@@ -5,26 +5,22 @@ import os
 
 app = Flask(__name__)
 
-# --- DATABASE CONFIGURATION ---
-# 1. Get the URL from Render's environment variable
+# URL from Render's environment variable
 uri = os.environ.get('DATABASE_URL')
 
 if uri:
-    # 2. FIX: SQLAlchemy requires 'postgresql://', but Render provides 'postgres://'
+    # Render provides 'postgres://'
     if uri.startswith("postgres://"):
         uri = uri.replace("postgres://", "postgresql://", 1)
 else:
-    # Fallback for local testing
     uri = 'sqlite:///tasks.db'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-placeholder')
 
-# Initialize the database with the app
 db.init_app(app)
 
-# --- ROUTES ---
 @app.route('/', methods=['POST', 'GET'])
 def index():
     if request.method == 'POST':
@@ -32,7 +28,6 @@ def index():
         due_date_obj = datetime.strptime(due_date_str, '%Y-%m-%d') if due_date_str else None
         cat_input = request.form.get('category')
         
-        # Use user-defined colors/categories logic
         final_cat = cat_input.strip() if cat_input and cat_input.strip() != "" else "General"
 
         new_task = Todo(
@@ -48,8 +43,8 @@ def index():
 
     active_tasks = Todo.query.filter_by(completed=False).all()
     history = Todo.query.filter_by(completed=True).order_by(Todo.date_created.desc()).all()
-    
-    # Logic for urgency and chart data
+
+    # Priority and urgency logic for the dashboard
     now = datetime.utcnow()
     for task in active_tasks:
         task.is_urgent = False
@@ -59,7 +54,7 @@ def index():
             if 0 <= task.days_left <= 3:
                 task.is_urgent = True
 
-    # Chart logic
+    # Chart logic for the 7-day productivity view
     daily_stats = []
     labels = []
     for i in range(6, -1, -1):
@@ -78,11 +73,52 @@ def index():
                            chart_labels=labels,
                            chart_data=daily_stats)
 
+@app.route('/edit/<int:id>', methods=['POST'])
+def edit_task(id):
+    task = Todo.query.get_or_404(id)
+    
+    task.title = request.form.get('title')
+    task.description = request.form.get('description')
+    task.priority = request.form.get('priority')
+    
+    cat_input = request.form.get('category')
+    task.category = cat_input.strip() if cat_input and cat_input.strip() != "" else "General"
+    
+    # FIX: Safely handle empty date strings to prevent errors
+    due_date_str = request.form.get('due_date')
+    if due_date_str and due_date_str.strip() != "":
+        task.due_date = datetime.strptime(due_date_str, '%Y-%m-%d')
+    else:
+        task.due_date = None
+        
+    db.session.commit()
+    return redirect('/')
+
+@app.route('/bulk_action', methods=['POST'])
+def bulk_action():
+    task_ids = request.form.getlist('task_ids')
+    action = request.form.get('action')
+    
+    if not task_ids:
+        return redirect('/')
+        
+    tasks = Todo.query.filter(Todo.id.in_(task_ids)).all()
+    
+    if action == 'complete':
+        for task in tasks:
+            task.completed = True
+            task.date_created = datetime.utcnow()
+    elif action == 'delete':
+        for task in tasks:
+            db.session.delete(task)
+            
+    db.session.commit()
+    return redirect('/')
+
 @app.route('/complete/<int:id>')
 def complete(id):
     task = Todo.query.get_or_404(id)
     task.completed = True
-    # Reset date_created to the completion time for the chart
     task.date_created = datetime.utcnow()
     db.session.commit()
     return redirect('/')
@@ -94,12 +130,15 @@ def delete(id):
     db.session.commit()
     return redirect('/')
 
-# --- INITIALIZATION ---
-# This block ensures the 'todo' table is created on the new database immediately
+@app.route('/clear_history')
+def clear_history():
+    Todo.query.filter_by(completed=True).delete()
+    db.session.commit()
+    return redirect('/')
+
 with app.app_context():
     db.create_all()
 
 if __name__ == "__main__":
-    # Render uses the PORT environment variable
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
