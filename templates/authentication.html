@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication | Done & Dusted</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Existing Styles... */
+        :root { --bg: #0a0a0a; --card: #161616; --cyan: #00f2ff; --purple: #bc13fe; --high: #ff4d4d; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; overflow-x: hidden; position: relative; }
+        .auth-container { width: 100%; max-width: 450px; padding: 20px; text-align: center; animation: fadeIn 0.8s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .logo { display: block; margin: 0 auto 20px auto; max-width: 80px; }
+        .auth-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #222; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; transition: 0.3s ease; }
+        h2 { color: var(--cyan); letter-spacing: 2px; font-weight: 800; margin-top: 0; text-transform: uppercase; font-size: 20px; }
+        .info-text { color: #888; font-size: 13px; line-height: 1.6; margin-bottom: 25px; }
+        
+        .input-group { position: relative; margin-bottom: 15px; }
+        .t-input { background: #1a1a1a; border: 1px solid #333; color: white; padding: 15px; border-radius: 12px; outline: none; font-family: inherit; font-size: 14px; width: 100%; box-sizing: border-box; transition: 0.3s; }
+        .t-input:focus { border-color: var(--cyan); background: #222; }
+        .t-input.error { border-color: var(--high); }
+        .t-input.success { border-color: #00ff88; }
+        
+        .err-msg { color: var(--high); font-size: 11px; text-align: left; margin-top: 4px; display: none; font-weight: 700; margin-left: 5px; }
+        
+        /* Show/Hide Password Icon */
+        .toggle-pwd { position: absolute; right: 15px; top: 16px; color: #666; cursor: pointer; font-size: 12px; text-transform: uppercase; font-weight: 800; }
+        .toggle-pwd:hover { color: var(--cyan); }
+
+        .btn-primary { background: var(--cyan); width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; color: black; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; transition: transform 0.2s, opacity 0.2s; }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+        
+        .toggle-link { margin-top: 25px; font-size: 13px; color: #666; }
+        .toggle-link span { color: var(--purple); cursor: pointer; font-weight: 700; transition: 0.2s; }
+        .toggle-link span:hover { text-decoration: underline; color: var(--cyan); }
+        .forgot-link { text-align: right; margin-top: -10px; margin-bottom: 15px; }
+        .forgot-link span { color: #555; font-size: 11px; cursor: pointer; font-weight: 700; text-transform: uppercase; transition: 0.2s; }
+        .forgot-link span:hover { color: var(--high); }
+        .hidden { display: none; }
+        
+        /* Back Button */
+        .back-btn { position: absolute; top: 20px; left: 20px; color: #666; text-decoration: none; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; transition: 0.2s; }
+        .back-btn:hover { color: var(--cyan); }
+        .back-btn span { font-size: 18px; margin-right: 5px; }
+
+        .flash-wrapper { width: 100%; max-width: 450px; margin-bottom: 20px; }
+        .flash-msg { padding: 12px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+        .flash-error { background: rgba(255, 77, 77, 0.2); border: 1px solid var(--high); color: var(--high); }
+        .flash-success { background: rgba(0, 242, 255, 0.1); border: 1px solid var(--cyan); color: var(--cyan); }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn"><span>&#8249;</span> Back to Home</a>
+
+    <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+        
+        <div class="flash-wrapper">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-msg flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="auth-container">
+            <img src="/static/images/Logo3.png" class="logo" alt="Done & Dusted">
+
+            <div id="signup-view" class="auth-card">
+                <h2>Create Your Task WorkSpace</h2>
+                <p class="info-text">
+                    To save and access your personal tasks for your next visit please fill in the following. 
+                </p>
+                <form action="/register" method="POST" id="regForm">
+                    <div class="input-group">
+                        <input type="text" name="full_name" class="t-input" placeholder="Full Name" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="text" name="username" id="regUser" class="t-input" placeholder="Username (lowercase, _ only)" required>
+                        <div class="err-msg" id="userErr">Username taken or invalid</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="email" name="email" id="regEmail" class="t-input" placeholder="Email Address" required>
+                        <div class="err-msg" id="emailErr">Email already in use</div>
+                    </div>
+                    
+                    <div class="input-group">
+                        <input type="password" name="password" id="regPass" class="t-input" placeholder="Password (Min 8 chars, strong)" required>
+                        <span class="toggle-pwd" onclick="togglePass('regPass')">Show</span>
+                        <div class="err-msg" id="passErr">Weak password (need 8+ chars, numbers)</div>
+                    </div>
+                    
+                    <button type="submit" id="regBtn" class="btn-primary">Initialize Workspace</button>
+                </form>
+                <div class="toggle-link">
+                    Already a member? <span onclick="showSignIn()">Access Your Tasks</span>
+                </div>
+            </div>
+
+            <div id="signin-view" class="auth-card hidden">
+                <h2>Access Your Tasks</h2>
+                <p class="info-text">
+                    Welcome back. Enter your credentials to continue dusting your workflow.
+                </p>
+                <form action="/login" method="POST">
+                    <div class="input-group">
+                        <input type="text" name="username" class="t-input" placeholder="Username" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" name="password" id="loginPass" class="t-input" placeholder="Password" required>
+                        <span class="toggle-pwd" onclick="togglePass('loginPass')">Show</span>
+                    </div>
+                    <div class="forgot-link">
+                        <span onclick="showReset()">Forgot Password?</span>
+                    </div>
+                    <button type="submit" class="btn-primary">Resume Dusting</button>
+                </form>
+                <div class="toggle-link">
+                    New here? <span onclick="showSignUp()">Create Your Task WorkSpace</span>
+                </div>
+            </div>
+
+            <div id="reset-view" class="auth-card hidden">
+                <h2>Recover Access</h2>
+                <p class="info-text">
+                    Enter the email associated with your workspace and we'll send you a recovery link.
+                </p>
+                <form action="/forgot-password" method="POST">
+                    <div class="input-group">
+                        <input type="email" name="email" class="t-input" placeholder="Email Address" required>
+                    </div>
+                    <button type="submit" class="btn-primary" style="background: var(--purple); color: white;">Send Recovery Link</button>
+                </form>
+                <div class="toggle-link">
+                    Remembered it? <span onclick="showSignIn()">Back to Access</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const signupView = document.getElementById('signup-view');
+        const signinView = document.getElementById('signin-view');
+        const resetView = document.getElementById('reset-view');
+
+        function showSignUp() { hideAll(); signupView.classList.remove('hidden'); }
+        function showSignIn() { hideAll(); signinView.classList.remove('hidden'); }
+        function showReset() { hideAll(); resetView.classList.remove('hidden'); }
+        function hideAll() { signupView.classList.add('hidden'); signinView.classList.add('hidden'); resetView.classList.add('hidden'); }
+
+        if(window.location.hash === '#signin') { showSignIn(); }
+
+        // --- PASSWORD VISIBILITY ---
+        function togglePass(id) {
+            const el = document.getElementById(id);
+            if (el.type === "password") { el.type = "text"; } 
+            else { el.type = "password"; }
+        }
+
+        // --- VALIDATION LOGIC ---
+        const regUser = document.getElementById('regUser');
+        const regEmail = document.getElementById('regEmail');
+        const regPass = document.getElementById('regPass');
+        const regBtn = document.getElementById('regBtn');
+        let userValid = false, emailValid = false, passValid = false;
+
+        function checkForm() {
+            regBtn.disabled = !(userValid && emailValid && passValid);
+        }
+
+        // Username Check
+        regUser.addEventListener('keyup', validateUsername);
+        regUser.addEventListener('blur', validateUsername);
+
+        async function validateUsername() {
+            const val = regUser.value;
+            const err = document.getElementById('userErr');
+            // Regex: lowercase a-z, 0-9, underscore only
+            const regex = /^[a-z0-9_]+$/;
+            
+            if (!regex.test(val)) {
+                err.innerText = "Lowercase letters, numbers and '_' only.";
+                err.style.display = 'block';
+                regUser.classList.add('error');
+                userValid = false;
+            } else {
+                // Check DB
+                const response = await fetch('/check_uniqueness', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({field: 'username', value: val})
+                });
+                const data = await response.json();
+                
+                if (data.exists) {
+                    err.innerText = "Username already taken.";
+                    err.style.display = 'block';
+                    regUser.classList.add('error');
+                    userValid = false;
+                } else {
+                    err.style.display = 'none';
+                    regUser.classList.remove('error');
+                    regUser.classList.add('success');
+                    userValid = true;
+                }
+            }
+            checkForm();
+        }
+
+        // Email Check
+        regEmail.addEventListener('blur', async function() {
+            const val = regEmail.value;
+            const err = document.getElementById('emailErr');
+            // Basic Email Regex
+            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (!regex.test(val)) {
+                err.innerText = "Invalid email format.";
+                err.style.display = 'block';
+                regEmail.classList.add('error');
+                emailValid = false;
+            } else {
+                const response = await fetch('/check_uniqueness', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({field: 'email', value: val})
+                });
+                const data = await response.json();
+                
+                if (data.exists) {
+                    err.innerText = "Email already in use.";
+                    err.style.display = 'block';
+                    regEmail.classList.add('error');
+                    emailValid = false;
+                } else {
+                    err.style.display = 'none';
+                    regEmail.classList.remove('error');
+                    regEmail.classList.add('success');
+                    emailValid = true;
+                }
+            }
+            checkForm();
+        });
+
+        // Password Strength
+        regPass.addEventListener('keyup', function() {
+            const val = regPass.value;
+            const err = document.getElementById('passErr');
+            // Min 8 chars, at least 1 number or special char
+            const strongRegex = /^(?=.*[0-9|!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+
+            if (!strongRegex.test(val)) {
+                err.style.display = 'block';
+                regPass.classList.add('error');
+                passValid = false;
+            } else {
+                err.style.display = 'none';
+                regPass.classList.remove('error');
+                regPass.classList.add('success');
+                passValid = true;
+            }
+            checkForm();
+        });
+
+    </script>
+</body>
+</html>
